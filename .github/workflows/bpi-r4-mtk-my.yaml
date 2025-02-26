@@ -18,6 +18,14 @@ on:
         options:
           - poe
           - non-poe
+      runner:
+        description: Select where compilation must be performed
+        required: true
+        type: choice
+        default: 'ubuntu-22.04'
+        options:
+          - 'ubuntu-22.04'
+          - 'self-hosted'
 
 env:
   # OpenWrt
@@ -46,7 +54,7 @@ jobs:
 
   build:
     name: Build BPI-R4 with MTK feed - alt with my config
-    runs-on: self-hosted
+    runs-on: ${{ github.event.inputs.runner }}
     steps:
       - name: Install dependencies
         run: |
