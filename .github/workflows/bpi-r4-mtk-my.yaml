@@ -40,7 +40,7 @@ env:
   LOCAL_CONFIG_PART: config.append
   OPENWRT_CACHE_KEY: ${{ github.repository }}/openwrt
   MTK_FEEDS_CACHE_KEY: ${{ github.repository }}/mtk-openwrt-feeds
-  BUILD_CACHE_KEy: ${{ github.repository }}/buildroot
+  BUILD_CACHE_KEY: ${{ github.repository }}/buildroot
 
 jobs:
 
@@ -247,7 +247,7 @@ jobs:
       - name: Create cache key for OpenWRT buildroot
         id: buildroot_cache_key
         run: |
-          cache_key="${BUILD_CACHE_KEY}"
+          cache_key="${{ env.BUILD_CACHE_KEY }}"
           cache_key="${cache_key}/$(cd openwrt && git rev-parse --verify HEAD)"
           cache_key="${cache_key}/$(cd mtk-openwrt-feeds && git rev-parse --verify HEAD)"
           echo "cache_key=${cache_key}" | tee -a $GITHUB_OUTPUT
