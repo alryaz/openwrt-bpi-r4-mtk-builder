@@ -29,7 +29,7 @@ env:
   MEDIATEK_REF: master
   # MEDIATEK_REF: 47fd8068e3bcd23bb606c711ed50149b266f09af
   # Configuration
-  RELEASE_PREFIX: bpi-r4-mtk
+  RELEASE_PREFIX: bpi-r4-mtk${{ inputs.DEVICE_CONFIG == 'poe' && '-poe' || '' }}
   UPSTREAM_CONFIG_BASE_URL: https://raw.githubusercontent.com/danpawlik/openwrt-builder/master/configs/
   UPSTREAM_CONFIG_PARTS: |
     ${{ inputs.DEVICE_CONFIG == 'poe' && 'mediatek/mt7988a/bpi-r4-poe' || 'mediatek/mt7988a/bpi-r4' }}
@@ -40,6 +40,7 @@ env:
   LOCAL_CONFIG_PART: config.append
   OPENWRT_CACHE_KEY: ${{ github.repository }}/openwrt
   MTK_FEEDS_CACHE_KEY: ${{ github.repository }}/mtk-openwrt-feeds
+  BUILD_CACHE_KEy: ${{ github.repository }}/buildroot
 
 jobs:
 
@@ -100,11 +101,11 @@ jobs:
           echo "update=$update" >> $GITHUB_OUTPUT
 
       - name: Save OpenWRT to avoid next long checkout
-        uses: actions/cache/save@v4
-        if: (steps.restore_owrt_cache.outputs.cache-hit != 'true') || (steps.ref_openwrt.outputs.update == 'true')
+        uses: actions/cache/restore@v4
         with:
           key: ${{ env.OPENWRT_CACHE_KEY }}
-          path: openwrt
+          path: |
+            openwrt
 
       - name: Restore mediatek feed to avoid long checkout
         id: restore_mtk_cache
@@ -243,10 +244,50 @@ jobs:
           cd openwrt;
           grep "=m" .config | grep -v 'CONFIG_PACKAGE_libustream-mbedtls=m' | while read -r line; do module=$(echo "$line" | cut -f1 -d'='); sed -i "s/^$line$/# $module is not set/" .config; done
 
-      - name: Build the firmware image
+      - name: Create cache key for OpenWRT buildroot
+        id: buildroot_cache_key
         run: |
-          cd openwrt;
-          make -j $(nproc) defconfig download world
+          cache_key="${BUILD_CACHE_KEY}"
+          cache_key="${cache_key}/$(cd openwrt && git rev-parse --verify HEAD)"
+          cache_key="${cache_key}/$(cd mtk-openwrt-feeds && git rev-parse --verify HEAD)"
+          echo "cache_key=${cache_key}" | tee -a $GITHUB_OUTPUT
+
+      - name: Cache buildroot
+        id: cache-buildroot
+        uses: actions/cache@v4
+        with:
+          key: ${{ steps.buildroot_cache_key.outputs.cache_key }}
+          path:
+            openwrt/staging_dir/tool*
+            openwrt/staging_dir/host*
+            openwrt/.ccache
+
+      - name: Prepare default configuration
+        run: cd openwrt && make defconfig
+
+      - name: Download dependencies
+        run: cd openwrt && make download V=sc -j$(($(nproc)+1))
+          
+      - name: Build the firmware image (multicore, unverbose)
+        id: build_multiple_cores
+        run: cd openwrt && make world -j$(($(nproc)+1))
+
+      - name: Build the firmware image (single core, unverbose)
+        if: failure() && steps.build_multiple_cores.conclusion == 'failure'
+        id: build_single_core
+        run: cd openwrt && make world V=sc -j1
+
+      - name: Build the firmware image (single core, verbose)
+        if: failure() && steps.build_single_core.conclusion == 'failure'
+        id: pin_down_error
+        run: cd openwrt && make world V=sc -j1 | tee build_error.log
+
+      - name: Upload error log as artifact
+        if: failure() && steps.pin_down_error.conclusion == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-error
+          path: openwrt/build_error.log
 
       - name: Compress all packages
         run: |
