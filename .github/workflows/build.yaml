@@ -20,6 +20,15 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Restore cached Primes
+      id: cache-primes-restore
+      uses: actions/cache/restore@v4
+      with:
+        path: |
+          path/to/dependencies
+          some/other/dependencies
+        key: ${{ runner.os }}-primes
+
     - name: Clone OpenWrt repository
       run: |
         git clone --single-branch --branch openwrt-24.10 https://git.openwrt.org/openwrt/openwrt.git openwrt
@@ -36,7 +45,6 @@ jobs:
       run: |
         echo "::group::Remove existing patches"
         rm -rf openwrt/package/firmware/wireless-regdb/patches/*.*
-        rm -rf mtk-openwrt-feeds/autobuild/unified/filogic/mac80211/24.10/files/package/firmware/wireless-regdb/patches/*.*
         echo "::endgroup::"
 
         echo "::group::Copy regdb configuration"
@@ -53,7 +61,17 @@ jobs:
         cp -r my_files/ethtool/Makefile openwrt/package/network/utils/ethtool/Makefile
         echo "::endgroup::"
 
-        echo "::group::Copy various patches"
+    - name: Apply MediaTek buildroot patches
+      run: |
+        if [ -n "$(ls -A my_files/mediatek_buildroot_patches/*.patch 2>/dev/null)" ]; then
+          cd mtk-openwrt-feeds
+          git apply ../my_files/mediatek_buildroot_patches/*.patch
+        fi
+
+    - name: Add custom patches to MediaTek packages
+      run: |
+        echo "::group::Copy patches"
+        rm -rf mtk-openwrt-feeds/autobuild/unified/filogic/mac80211/24.10/files/package/firmware/wireless-regdb/patches/*.*
         cp -r my_files/999-2709-net-ethernet-mtk_eth_soc-add-rss-lro-reg.patch mtk-openwrt-feeds/autobuild/unified/global/24.10/files/target/linux/mediatek/patches-6.6/
         cp -r my_files/999-2710-net-ethernet-mtk_eth_soc-add-rss-support.patch mtk-openwrt-feeds/autobuild/unified/global/24.10/files/target/linux/mediatek/patches-6.6/
         cp -r my_files/0006-arch-arm64-dts-mt7988a-add-adma-intrrupts.patch mtk-openwrt-feeds/autobuild/unified/global/24.10/patches-base/
@@ -64,18 +82,18 @@ jobs:
         cp -r my_files/99999_tx_power_check.patch mtk-openwrt-feeds/autobuild/unified/filogic/mac80211/24.10/files/package/kernel/mt76/patches/
         echo "::endgroup::"
 
-    - name: Disable perf package by default
-      run: |
+        echo "::group::Disable perf package by default"
         sed -i 's/CONFIG_PACKAGE_perf=y/# CONFIG_PACKAGE_perf is not set/' mtk-openwrt-feeds/autobuild/unified/filogic/mac80211/24.10/defconfig
         sed -i 's/CONFIG_PACKAGE_perf=y/# CONFIG_PACKAGE_perf is not set/' mtk-openwrt-feeds/autobuild/autobuild_5.4_mac80211_release/mt7988_wifi7_mac80211_mlo/.config
         sed -i 's/CONFIG_PACKAGE_perf=y/# CONFIG_PACKAGE_perf is not set/' mtk-openwrt-feeds/autobuild/autobuild_5.4_mac80211_release/mt7986_mac80211/.config
+        echo "::endgroup::"
 
-    - name: Disable kmod-thermal package by default
-      run: |
+        echo "::group::Disable kmod-thermal package by default"
         sed -i 's/CONFIG_PACKAGE_kmod-thermal=y/# CONFIG_PACKAGE_kmod-thermal is not set/' mtk-openwrt-feeds/autobuild/autobuild_5.4_mac80211_release/mt7988_wifi7_mac80211_mlo/.config
         sed -i 's/CONFIG_PACKAGE_kmod-thermal=y/# CONFIG_PACKAGE_kmod-thermal is not set/' mtk-openwrt-feeds/autobuild/autobuild_5.4_mac80211_release/mt7981_mac80211/.config
         sed -i 's/CONFIG_PACKAGE_kmod-thermal=y/# CONFIG_PACKAGE_kmod-thermal is not set/' mtk-openwrt-feeds/autobuild/autobuild_5.4_mac80211_release/mt7986_mac80211/.config
-
+        echo "::endgroup::"
+  
     - name: Run autobuild script
       run: |
         cd openwrt
