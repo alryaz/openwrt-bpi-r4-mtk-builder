@@ -155,11 +155,10 @@ jobs:
 
       - name: Configure firmware image
         run: |
-          cd openwrt;
           {
             for config_part in $(echo "${UPSTREAM_CONFIG_PARTS}" | sed '/^[[:space:]]*$/d'); do
               echo "## Configuration: ${config_part}"
-              curl -SL "${UPSTREAM_CONFIG_BASE_URL}${config_part}"
+              curl -sSL "${UPSTREAM_CONFIG_BASE_URL}${config_part}"
               echo ""
             done
 
@@ -176,7 +175,7 @@ jobs:
               echo "CONFIG_PACKAGE_wpad-basic-mbedtls=n"
               echo ""
             fi
-          } | tee .config
+          } > >(tee openwrt/.config)
 
       - name: Run defconfig
         run: |
