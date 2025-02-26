@@ -20,8 +20,6 @@ on:
           - non-poe
 
 env:
-  REMOTE_REPOSITORY: danpawlik/bpi-r4-mtk
-  REMOTE_BRANCH: main
   # OpenWrt
   OPENWRT_REPOSITORY: https://github.com/openwrt/openwrt
   # OPENWRT_REF: openwrt-24.10
@@ -32,30 +30,19 @@ env:
   # MEDIATEK_REF: 47fd8068e3bcd23bb606c711ed50149b266f09af
   # Configuration
   RELEASE_PREFIX: bpi-r4-mtk
-  DEVICE_CONFIG: ${{ inputs.DEVICE_CONFIG == 'poe' && 'configs/mediatek/mt7988a/bpi-r4-poe' || 'configs/mediatek/mt7988a/bpi-r4' }}
+  UPSTREAM_CONFIG_BASE_URL: https://raw.githubusercontent.com/danpawlik/openwrt-builder/master/configs/
+  UPSTREAM_CONFIG_PARTS: |
+    ${{ inputs.DEVICE_CONFIG == 'poe' && 'mediatek/mt7988a/bpi-r4-poe' || 'mediatek/mt7988a/bpi-r4' }}
+    common/main-router
+    common/snapshot-short
+    common/snapshot-mtk-feed
+    common/openssl
+  LOCAL_CONFIG_PART: config.append
 
 jobs:
-  check_commits:
-    name: Check Commits
-    runs-on: ubuntu-24.04
-    outputs:
-      latest_commit_sha: ${{ steps.get_sha.outputs.latest_commit_sha }}
-    steps:
-      - name: Checkout remote repository
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ env.REMOTE_REPOSITORY }}
-          ref: ${{ env.REMOTE_BRANCH }}
-
-      - name: Get the latest commit SHA
-        id: get_sha
-        run: |
-          echo "latest_commit_sha=$(git rev-parse HEAD)" >> $GITHUB_ENV
-          echo "latest_commit_sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
   build:
     name: Build BPI-R4 with MTK feed - alt with my config
-    needs: [check_commits]
     runs-on: ubuntu-24.04
     steps:
       - name: Install dependencies
@@ -69,9 +56,6 @@ jobs:
 
       - name: Checkout remote repository
         uses: actions/checkout@v4
-        with:
-          repository: ${{ env.REMOTE_REPOSITORY }}
-          ref: ${{ env.REMOTE_BRANCH }}
 
       - name: Clone OpenWrt
         run: |
@@ -170,16 +154,27 @@ jobs:
       - name: Configure firmware image
         run: |
           cd openwrt;
-          curl -SL https://raw.githubusercontent.com/danpawlik/openwrt-builder/master/${{ env.DEVICE_CONFIG }} > .config
-          curl -SL https://raw.githubusercontent.com/danpawlik/openwrt-builder/master/configs/common/main-router >> .config
-          curl -SL https://raw.githubusercontent.com/danpawlik/openwrt-builder/master/configs/common/snapshot-short >> .config
-          curl -SL https://raw.githubusercontent.com/danpawlik/openwrt-builder/master/configs/common/snapshot-mtk-feed  >> .config
+          {
+            for config_part in $(echo "${UPSTREAM_CONFIG_PARTS}" | sed '/^[[:space:]]*$/d'); do
+              echo "## Configuration: ${config_part}"
+              curl -SL "${UPSTREAM_CONFIG_BASE_URL}${config_part}"
+              echo ""
+            done
 
-      - name: Enable openssl
-        run: |
-          cd openwrt;
-          sed -i '/CONFIG_PACKAGE_wpad-mbedtls=y/d' .config
-          curl -SL https://raw.githubusercontent.com/danpawlik/openwrt-builder/master/configs/common/openssl >> .config
+            if [ ! -z "${LOCAL_CONFIG_PART}" ]; then
+              echo "## Configuration (local): ${LOCAL_CONFIG_PART}"
+              cat "${LOCAL_CONFIG_PART}"
+              echo ""
+            fi
+
+            # Enable openssl
+            if [[ $UPSTREAM_CONFIG_PARTS == *"common/openssl"* ]]; then
+              echo "## Enable openssl handling"
+              echo "CONFIG_PACKAGE_wpad-mbedtls=n"
+              echo "CONFIG_PACKAGE_wpad-basic-mbedtls=n"
+              echo ""
+            fi
+          } | tee .config
 
       - name: Run defconfig
         run: |
@@ -224,7 +219,7 @@ jobs:
 
   release:
     name: Create release
-    needs: [build, check_commits]
+    needs: [build]
     if: needs.build.result == 'success'
     runs-on: ubuntu-24.04
     steps:
@@ -237,20 +232,21 @@ jobs:
         run: tar xf bpi_r4-images.tar
 
       - name: Get current date
-        run: echo "RELEASE_DATE=$(date +%F)" >> $GITHUB_ENV
+        id: current_date
+        run: echo "date=$(date +%F)" >> $GITHUB_OUTPUT
 
       - name: Create release
         uses: softprops/action-gh-release@master
         with:
           files: bin/targets/mediatek/filogic/*
-          tag_name: ${{ env.RELEASE_PREFIX }}-${{ env.REMOTE_BRANCH }}-${{ env.RELEASE_DATE }}
-          name: OpenWRT BPI-R4 with MTK Feed with my packages ${{ inputs.DEVICE_CONFIG == 'poe' && 'POE' || '' }} - ${{ env.RELEASE_DATE }}
+          tag_name: ${{ env.RELEASE_PREFIX }}-${{ github.ref_name }}-${{ steps.current_date.outputs.date }}
+          name: OpenWRT BPI-R4 with MTK Feed with my packages ${{ inputs.DEVICE_CONFIG == 'poe' && 'POE' || '' }} - ${{ steps.current_date.outputs.date }}
           body: |
             Updated prebuilt images for BPI-R4 ${{ inputs.DEVICE_CONFIG == 'poe' && 'PoE version' || '' }}  with MTK feed and my custom packages
 
             OpenWrt ref: ${{ env.OPENWRT_REF }}
             Mediatek feed ref: ${{ env.MEDIATEK_REF }}
-            Project ref: ${{ needs.check_commits.outputs.latest_commit_sha }}
+            Project ref: ${{ github.ref }}
 
       - name: Clean up old releases
         uses: dev-drprasad/delete-older-releases@master
