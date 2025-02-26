@@ -44,7 +44,7 @@ jobs:
 
   build:
     name: Build BPI-R4 with MTK feed - alt with my config
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - name: Install dependencies
         run: |
