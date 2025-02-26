@@ -70,16 +70,14 @@ jobs:
         if: ${{ steps.restore_owrt_cache.outputs.cache-hit != 'true' }}
         run: |
           git clone ${{ env.OPENWRT_REPOSITORY }} openwrt;
-          git config --global --add safe.directory ${{ github.workspace }}/openwrt
           cd openwrt;
           git checkout ${{ env.OPENWRT_REF }}
 
       - name: Checkout required ref
         id: ref_openwrt
         run: |
-          git config --global --add safe.directory ${{ github.workspace }}/openwrt
           update="false"
-          cd mtk-openwrt-feeds
+          cd openwrt
           if ! git checkout ${{ env.OPENWRT_REF }}; then
             echo "Reference not found in current repository"
             git fetch
@@ -124,7 +122,6 @@ jobs:
       - name: Checkout required ref
         id: checkout_ref
         run: |
-          git config --global --add safe.directory ${{ github.workspace }}/mtk-openwrt-feeds
           update="false"
           cd mtk-openwrt-feeds
           if ! git checkout ${{ env.MEDIATEK_REF }}; then
