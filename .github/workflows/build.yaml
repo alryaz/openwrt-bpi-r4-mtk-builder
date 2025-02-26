@@ -1,12 +1,6 @@
 name: Build OpenWrt
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
   workflow_dispatch:
 
 env:
@@ -25,13 +19,13 @@ jobs:
       id: caching_keys
       run: |
         key="mtk-openwrt-feeds--${{ env.MTK_COMMIT_HASH }}"
-        echo "base_key=${key}" >> $GITHUB_OUTPUT
+        echo "base_key=${key}." >> $GITHUB_OUTPUT
         for dir in "mediatek_auto_patches" "mediatek_buildroot_patches" "device_trees"; do
           last_commit=$(git rev-list HEAD -- "my_files/$dir" | head -1)
-          echo $last_commit
+          key="$key-${last_commit}"
           echo "Latest commit for directory my_files/$dir is: ${last_commit}"
         done
-        echo "patched_key=${key}" >> $GITHUB_OUTPUT
+        echo "patched_key=${key}." >> $GITHUB_OUTPUT
 
     - name: Clone OpenWrt repository
       run: |
