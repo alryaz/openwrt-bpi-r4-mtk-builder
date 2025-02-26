@@ -11,7 +11,7 @@ env:
 
 jobs:
   check-cache:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     outputs:
       buildroot: ${{ steps.caching_keys.outputs.buildroot }}
       cloned-mtk: ${{ steps.caching_keys.outputs.cloned-mtk }}
@@ -42,12 +42,32 @@ jobs:
       # @TODO: resort to uploading artifact
 
   prepare-cache:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: [check-cache]
     if: needs.check-cache.outputs.cache-hit != 'true'
     steps:
       - name: Checkout current repository
         uses: actions/checkout@v4
+
+      - name: Install dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          echo "::group::Updating repositories"
+          sudo apt update
+          echo "::endgroup::"
+
+          # echo "::group::Upgrading software"
+          # sudo apt-mark hold firefox
+          # sudo apt full-upgrade -y
+          # echo "::endgroup::"
+
+          echo "::group::Installing requirements"
+          sudo apt install -y \
+            build-essential clang flex bison g++ gawk \
+            gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev \
+            python3-setuptools rsync swig unzip zlib1g-dev file wget libelf-dev
+          echo "::endgroup::"
 
       #
       #
@@ -62,7 +82,8 @@ jobs:
       - name: Clone MTK OpenWrt feeds repository
         if: steps.cloned-mtk-restore.outputs.cache-hit != 'true'
         run: |
-          git clone --single-branch --branch master https://git01.mediatek.com/openwrt/feeds/mtk-openwrt-feeds
+          git clone https://git01.mediatek.com/openwrt/feeds/mtk-openwrt-feeds mtk-openwrt-feeds \
+            --single-branch --branch master
           cd mtk-openwrt-feeds
           git checkout ${{ env.MTK_COMMIT_HASH }}
   
@@ -86,7 +107,8 @@ jobs:
       - name: Clone OpenWRT base repository
         if: steps.cloned-mtk-restore.outputs.cache-hit != 'true'
         run: |
-          git clone --single-branch --branch openwrt-24.10 https://git.openwrt.org/openwrt/openwrt.git openwrt
+          git clone https://git.openwrt.org/openwrt/openwrt.git openwrt \
+            --single-branch --branch openwrt-24.10
           cd openwrt
           git checkout ${{ env.OWRT_COMMIT_HASH }}
   
@@ -115,8 +137,11 @@ jobs:
       - name: Apply MediaTek buildroot patches
         run: |
           if [ -n "$(ls -A my_files/mediatek_buildroot_patches/*.patch 2>/dev/null)" ]; then
+            echo "Applying buildroot patches..."
             cd mtk-openwrt-feeds
-            git apply ../my_files/mediatek_buildroot_patches/*.patch
+            git apply --verbose ../my_files/mediatek_buildroot_patches/*.patch
+          else
+            echo "No buildroot patches found."
           fi
   
       - name: Add custom patches to MediaTek packages
@@ -206,10 +231,30 @@ jobs:
       needs.check-cache.result == 'success' &&
       (needs.prepare-cache.result == 'success' || needs.prepare-cache.result == 'skipped')
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+
+    - name: Install dependencies
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        echo "::group::Updating repositories"
+        sudo apt update
+        echo "::endgroup::"
+
+        # echo "::group::Upgrading software"
+        # sudo apt-mark hold firefox
+        # sudo apt full-upgrade -y
+        # echo "::endgroup::"
+
+        echo "::group::Installing requirements"
+        sudo apt install -y \
+          build-essential clang flex bison g++ gawk \
+          gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev \
+          python3-setuptools rsync swig unzip zlib1g-dev file wget libelf-dev
+        echo "::endgroup::"
 
     - name: Restore cached buildroot
       uses: actions/cache/restore@v4
