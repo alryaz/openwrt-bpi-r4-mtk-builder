@@ -110,6 +110,15 @@ jobs:
           key: ${{ env.MTK_FEEDS_CACHE_KEY }}
           path: mtk-openwrt-feeds
 
+      - name: Add custom feeds
+        run: |
+          {
+            echo "src-git modemfeed https://github.com/koshev-msk/modemfeed.git"
+            echo "src-git luci_app_3ginfo_lite https://github.com/4IceG/luci-app-3ginfo-lite.git"
+            echo "src-git luci_app_atinout_mod https://github.com/4IceG/luci-app-atinout-mod.git"
+            echo "src-git luci_app_modemband https://github.com/4IceG/luci-app-modemband.git"
+          } | tee -a openwrt/feeds.conf.default
+
       - name: Change autobuild rules - important
         run: |
           cd openwrt;
