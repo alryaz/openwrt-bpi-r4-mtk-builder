@@ -48,12 +48,13 @@ jobs:
         echo "::endgroup::"
 
         echo "::group::Copy device trees"
+        cd my_files/device_trees
         cp -r \
-          my_files/mt7988a-rfb-spim-nand-nmbm.dtso \
-          my_files/mt7981-rfb-spim-nor.dtso \
-          my_files/mt7988d-rfb.dts \
-          my_files/mt7988a-rfb-spidev.dtso \
-          openwrt/target/linux/mediatek/files-6.6/arch/arm64/boot/dts/mediatek/
+          mt7988a-rfb-spim-nand-nmbm.dtso \
+          mt7981-rfb-spim-nor.dtso \
+          mt7988d-rfb.dts \
+          mt7988a-rfb-spidev.dtso \
+          ../../openwrt/target/linux/mediatek/files-6.6/arch/arm64/boot/dts/mediatek/
         echo "::endgroup::"
 
         cp -r my_files/ethtool/Makefile openwrt/package/network/utils/ethtool/Makefile
@@ -91,7 +92,9 @@ jobs:
       run: |
         cd openwrt
         bash ../mtk-openwrt-feeds/autobuild/unified/autobuild.sh filogic-mac80211-bpi-r4 log_file=make
-        cp -r ../my_files/w-mt7988a.dtsi target/linux/mediatek/files-6.6/arch/arm64/boot/dts/mediatek/mt7988a.dtsi
+        cp -r \
+          ../my_files/device_trees/w-mt7988a.dtsi \
+          target/linux/mediatek/files-6.6/arch/arm64/boot/dts/mediatek/mt7988a.dtsi
 
     - name: Add additional package feeds
       run: |
