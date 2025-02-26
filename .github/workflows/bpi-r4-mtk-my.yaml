@@ -38,6 +38,7 @@ env:
     common/snapshot-mtk-feed
     common/openssl
   LOCAL_CONFIG_PART: config.append
+  MTK_FEEDS_CACHE_KEY: ${{ github.repository }}/mtk-openwrt-feeds
 
 jobs:
 
@@ -67,12 +68,13 @@ jobs:
         id: restore_mtk_cache
         uses: actions/cache/restore@v4
         with:
-          key: mtk-openwrt-feeds
+          key: ${{ env.MTK_FEEDS_CACHE_KEY }}
           path: mtk-openwrt-feeds
 
       - name: Clone mediatek feed
         if: ${{ steps.restore_mtk_cache.outputs.cache-hit != 'true' }}
         run: |
+          rm -rf mtk-openwrt-feeds
           git clone ${{ env.MEDIATEK_REPOSITORY }} mtk-openwrt-feeds;
 
       - name: Checkout required ref
@@ -105,7 +107,7 @@ jobs:
         uses: actions/cache/save@v4
         if: (steps.restore_mtk_cache.outputs.cache-hit != 'true') || (steps.checkout_ref.outputs.update == 'true')
         with:
-          key: mtk-openwrt-feeds
+          key: ${{ env.MTK_FEEDS_CACHE_KEY }}
           path: mtk-openwrt-feeds
 
       - name: Change autobuild rules - important
@@ -163,7 +165,7 @@ jobs:
 
             if [ ! -z "${LOCAL_CONFIG_PART}" ]; then
               echo "## Configuration (local): ${LOCAL_CONFIG_PART}"
-              cat "${LOCAL_CONFIG_PART}"
+              cat "configs/${LOCAL_CONFIG_PART}"
               echo ""
             fi
 
