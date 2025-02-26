@@ -75,7 +75,6 @@ jobs:
         cp -r my_files/999-2709-net-ethernet-mtk_eth_soc-add-rss-lro-reg.patch mtk-openwrt-feeds/autobuild/unified/global/24.10/files/target/linux/mediatek/patches-6.6/
         cp -r my_files/999-2710-net-ethernet-mtk_eth_soc-add-rss-support.patch mtk-openwrt-feeds/autobuild/unified/global/24.10/files/target/linux/mediatek/patches-6.6/
         cp -r my_files/0006-arch-arm64-dts-mt7988a-add-adma-intrrupts.patch mtk-openwrt-feeds/autobuild/unified/global/24.10/patches-base/
-        cp -r my_files/mediatek/*.* mtk-openwrt-feeds/autobuild/unified/global/24.10/files/target/linux/mediatek/files-6.6/drivers/net/ethernet/mediatek/
         cp -r my_files/999-3000-netfilter-add-bridging-support-to-xt_FLOWOFFLOAD.patch mtk-openwrt-feeds/autobuild/unified/filogic/mac80211/24.10/files/target/linux/mediatek/patches-6.6/999-3000-netfilter-add-bridging-support-to-xt_FLOWOFFLOAD.patch
         cp -r my_files/99999_tx_power_check.patch mtk-openwrt-feeds/autobuild/unified/filogic/mac80211/24.10/files/package/kernel/mt76/patches/
         echo "::endgroup::"
