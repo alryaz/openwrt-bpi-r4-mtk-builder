@@ -79,11 +79,50 @@ jobs:
           cd openwrt;
           git checkout ${{ env.OPENWRT_REF }}
 
+      - name: Restore mediatek feed to avoid long checkout
+        id: restore_mtk_cache
+        uses: actions/cache/restore@v4
+        with:
+          key: mtk-openwrt-feeds
+          path: mtk-openwrt-feeds
+
       - name: Clone mediatek feed
+        if: ${{ steps.restore_mtk_cache.outputs.cache-hit != 'true' }}
         run: |
           git clone ${{ env.MEDIATEK_REPOSITORY }} mtk-openwrt-feeds;
-          cd mtk-openwrt-feeds;
-          git checkout ${{ env.MEDIATEK_REF }}
+
+      - name: Checkout required ref
+        id: checkout_ref
+        run: |
+          update="false"
+          cd mtk-openwrt-feeds
+          if ! git checkout ${{ env.MEDIATEK_REF }}; then
+            echo "Reference not found in current repository"
+            git fetch
+            git checkout ${{ env.MEDIATEK_REF }}
+            update="true"
+          fi
+
+          if git show-ref --verify refs/heads/${{ env.MEDIATEK_REF }} 2>/dev/null; then
+            echo "Updating MTK branch"
+            if [ "$update" != "true" ]; then
+              before_update=$(git rev-parse HEAD)
+              git pull
+              after_update=$(git rev-parse HEAD)
+              if [ "${before_update}" != "${after_update}" ]; then
+                update="true"
+              fi
+            fi
+          fi
+
+          echo "update=$update" >> $GITHUB_OUTPUT
+
+      - name: Save mediatek feed to avoid next long checkout
+        uses: actions/cache/save@v4
+        if: (steps.restore_mtk_cache.outputs.cache-hit != 'true') || (steps.checkout_ref.outputs.update == 'true')
+        with:
+          key: mtk-openwrt-feeds
+          path: mtk-openwrt-feeds
 
       - name: Change autobuild rules - important
         run: |
