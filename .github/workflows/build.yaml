@@ -20,15 +20,6 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Restore cached Primes
-      id: cache-primes-restore
-      uses: actions/cache/restore@v4
-      with:
-        path: |
-          path/to/dependencies
-          some/other/dependencies
-        key: ${{ runner.os }}-primes
-
     - name: Clone OpenWrt repository
       run: |
         git clone --single-branch --branch openwrt-24.10 https://git.openwrt.org/openwrt/openwrt.git openwrt
@@ -48,9 +39,12 @@ jobs:
         echo "::endgroup::"
 
         echo "::group::Copy regdb configuration"
-        cp -r my_files/500-tx_power.patch mtk-openwrt-feeds/autobuild/unified/filogic/mac80211/24.10/files/package/firmware/wireless-regdb/patches
-        cp -r my_files/regdb.Makefile openwrt/package/firmware/wireless-regdb/Makefile
-        cp -r my_files/rules mtk-openwrt-feeds/autobuild/unified
+        cp -r \
+          my_files/500-tx_power.patch \
+          mtk-openwrt-feeds/autobuild/unified/filogic/mac80211/24.10/files/package/firmware/wireless-regdb/patches
+        cp -r \
+          my_files/regdb.Makefile \
+          openwrt/package/firmware/wireless-regdb/Makefile
         echo "::endgroup::"
 
         echo "::group::Copy device trees"
