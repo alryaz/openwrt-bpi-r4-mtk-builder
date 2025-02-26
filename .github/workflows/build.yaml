@@ -22,6 +22,7 @@ jobs:
 
     - name: Clone OpenWrt repository
       continue-on-error: true
+      id: clone_openwrt
       run: |
         mkdir openwrt
         cd openwrt
@@ -31,7 +32,7 @@ jobs:
         git checkout FETCH_HEAD
 
     - name: Clone openwrt repository (unsparsed)
-      if: failure() && steps.build_single_core.conclusion == 'failure'
+      if: failure() && steps.clone_openwrt.conclusion == 'failure'
       run: |
         rm -rf openwrt
         git clone --branch openwrt-24.10 https://git.openwrt.org/openwrt/openwrt.git openwrt
@@ -40,6 +41,7 @@ jobs:
         
     - name: Clone MTK OpenWrt feeds repository
       continue-on-error: true
+      id: clone_mtk
       run: |
         mkdir mtk-openwrt-feeds
         cd mtk-openwrt-feeds
@@ -49,7 +51,7 @@ jobs:
         git checkout FETCH_HEAD
 
     - name: Clone MTK OpenWrt feeds repository (unsparsed)
-      if: failure() && steps.build_single_core.conclusion == 'failure'
+      if: failure() && steps.clone_mtk.conclusion == 'failure'
       run: |
         rm -rf mtk-openwrt-feeds
         git clone --branch master https://git01.mediatek.com/openwrt/feeds/mtk-openwrt-feeds
