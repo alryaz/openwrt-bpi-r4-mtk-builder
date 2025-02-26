@@ -19,13 +19,13 @@ jobs:
       id: caching_keys
       run: |
         key="mtk-openwrt-feeds--${{ env.MTK_COMMIT_HASH }}"
-        echo "base_key=${key}." >> $GITHUB_OUTPUT
+        echo "cloned_mtk=${key}." >> $GITHUB_OUTPUT
         for dir in "mediatek_auto_patches" "mediatek_buildroot_patches" "device_trees"; do
           last_commit=$(git rev-list HEAD -- "my_files/$dir" | head -1)
           key="$key-${last_commit}"
           echo "Latest commit for directory my_files/$dir is: ${last_commit}"
         done
-        echo "patched_key=${key}." >> $GITHUB_OUTPUT
+        echo "patched_mtk=${key}." >> $GITHUB_OUTPUT
 
     - name: Clone OpenWrt repository
       run: |
@@ -33,37 +33,28 @@ jobs:
         cd openwrt
         git checkout 68bf4844a1cbc9f404f6e93b70a2657e74f1dce9
 
-    - name: Restore patched MTK repository
-      id: cached-mtk-restore
-      uses: actions/cache/restore@v4
-      with:
-        path: mtk-openwrt-feeds
-        key: "${{ steps.caching_keys.outputs.patched_key }}"
-
     - name: Restore cloned MTK repository
-      id: cached-mtk-clone-restore
-      if: steps.cached-mtk-restore.outputs.cache-hit != 'true'
+      id: cloned-mtk-restore
       uses: actions/cache/restore@v4
       with:
         path: mtk-openwrt-feeds
-        key: "${{ steps.caching_keys.outputs.base_key }}"
+        key: "${{ steps.caching_keys.outputs.cloned_mtk }}"
 
     - name: Clone MTK OpenWrt feeds repository
-      if: steps.cached-mtk-clone-restore.outputs.cache-hit != 'true'
+      if: steps.cloned-mtk-restore.outputs.cache-hit != 'true'
       run: |
         git clone --single-branch --branch master https://git01.mediatek.com/openwrt/feeds/mtk-openwrt-feeds
         cd mtk-openwrt-feeds
         git checkout ${{ env.MTK_COMMIT_HASH }}
 
     - name: Save cloned cache
-      if: steps.cached-mtk-clone-restore.outputs.cache-hit != 'true'
+      if: steps.cloned-mtk-restore.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
         path: mtk-openwrt-feeds
-        key: "${{ steps.caching_keys.outputs.base_key }}"
+        key: "${{ steps.caching_keys.outputs.cloned_mtk }}"
 
     - name: Modify build environment
-      if: steps.cached-mtk-restore.outputs.cache-hit != 'true'
       run: |
         echo "::group::Remove existing patches"
         rm -rf openwrt/package/firmware/wireless-regdb/patches/*.*
@@ -76,7 +67,6 @@ jobs:
         echo "::endgroup::"
 
     - name: Apply MediaTek buildroot patches
-      if: steps.cached-mtk-restore.outputs.cache-hit != 'true'
       run: |
         if [ -n "$(ls -A my_files/mediatek_buildroot_patches/*.patch 2>/dev/null)" ]; then
           cd mtk-openwrt-feeds
@@ -84,7 +74,6 @@ jobs:
         fi
 
     - name: Add custom patches to MediaTek packages
-      if: steps.cached-mtk-restore.outputs.cache-hit != 'true'
       run: |
         echo "::group::Copy patches"
         rm -rf \
@@ -105,13 +94,6 @@ jobs:
           99999_tx_power_check.patch \
           ../../mtk-openwrt-feeds/autobuild/unified/filogic/mac80211/24.10/files/package/kernel/mt76/patches/
         echo "::endgroup::"
-
-    - name: Save patched cache
-      if: steps.cached-mtk-restore.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v4
-      with:
-        path: mtk-openwrt-feeds
-        key: "${{ steps.caching_keys.outputs.patched_key }}"
 
     - name: Modify OpenWRT build environment
       run: |
