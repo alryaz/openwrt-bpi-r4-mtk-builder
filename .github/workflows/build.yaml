@@ -200,9 +200,9 @@ jobs:
         run: |
           {
             echo "src-git modemfeed https://github.com/koshev-msk/modemfeed.git"
-            echo "src-git luci-app-3ginfo-lite https://github.com/4IceG/luci-app-3ginfo-lite.git"
-            echo "src-git luci-app-atinout-mod https://github.com/4IceG/luci-app-atinout-mod.git"
-            echo "src-git luci-app-modemband https://github.com/4IceG/luci-app-modemband.git"
+            echo "src-git luci_app_3ginfo_lite https://github.com/4IceG/luci-app-3ginfo-lite.git"
+            echo "src-git luci_app_atinout_mod https://github.com/4IceG/luci-app-atinout-mod.git"
+            echo "src-git luci_app_modemband https://github.com/4IceG/luci-app-modemband.git"
           } | tee -a openwrt/feeds.conf.default
   
       - name: Update and install feeds
