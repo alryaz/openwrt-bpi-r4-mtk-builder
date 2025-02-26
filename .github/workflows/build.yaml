@@ -28,7 +28,8 @@ jobs:
         echo "base_key=${key}" >> $GITHUB_OUTPUT
         for dir in "mediatek_auto_patches" "mediatek_buildroot_patches" "device_trees"; do
           last_commit=$(git rev-list HEAD -- "my_files/$dir" | head -1)
-          key="${key}-${last_commit}"
+          echo $last_commit
+          echo "Latest commit for directory my_files/$dir is: ${last_commit}"
         done
         echo "patched_key=${key}" >> $GITHUB_OUTPUT
 
@@ -38,7 +39,7 @@ jobs:
         cd openwrt
         git checkout 68bf4844a1cbc9f404f6e93b70a2657e74f1dce9
 
-    - name: Restore cloned MTK repository
+    - name: Restore patched MTK repository
       id: cached-mtk-restore
       uses: actions/cache/restore@v4
       with:
@@ -128,6 +129,7 @@ jobs:
           mt7988d-rfb.dts \
           mt7988a-rfb-spidev.dtso \
           ../../openwrt/target/linux/mediatek/files-6.6/arch/arm64/boot/dts/mediatek/
+        cd ../../
         echo "::endgroup::"
 
         echo "::group::Override some default files"
