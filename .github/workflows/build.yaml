@@ -27,7 +27,7 @@ jobs:
           {
             echo "cloned-mtk=mtk-openwrt-feeds-${{ env.MTK_COMMIT_HASH }}"
             echo "cloned-owrt=openwrt-${{ env.OWRT_COMMIT_HASH }}"
-            echo "buildroot-${{ env.OWRT_COMMIT_HASH }}-${{ env.MTK_COMMIT_HASH }}-$(git rev-list HEAD -- "my_files/$dir" | head -1)"
+            echo "buildroot=buildroot-${{ env.OWRT_COMMIT_HASH }}-${{ env.MTK_COMMIT_HASH }}-$(git rev-list HEAD -- "my_files/$dir" | head -1)"
           } | tee -a $GITHUB_OUTPUT
 
       - name: Check if cache contains values
