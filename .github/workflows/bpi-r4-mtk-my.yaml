@@ -38,6 +38,7 @@ env:
     common/snapshot-mtk-feed
     common/openssl
   LOCAL_CONFIG_PART: config.append
+  OPENWRT_CACHE_KEY: ${{ github.repository }}/openwrt
   MTK_FEEDS_CACHE_KEY: ${{ github.repository }}/mtk-openwrt-feeds
 
 jobs:
@@ -58,12 +59,54 @@ jobs:
       - name: Checkout remote repository
         uses: actions/checkout@v4
 
+      - name: Restore OpenWRT feed to avoid long checkout
+        id: restore_owrt_cache
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ env.OPENWRT_CACHE_KEY }}
+          path: openwrt
+
       - name: Clone OpenWrt
+        if: ${{ steps.restore_owrt_cache.outputs.cache-hit != 'true' }}
         run: |
           git clone ${{ env.OPENWRT_REPOSITORY }} openwrt;
           git config --global --add safe.directory ${{ github.workspace }}/openwrt
           cd openwrt;
           git checkout ${{ env.OPENWRT_REF }}
+
+      - name: Checkout required ref
+        id: ref_openwrt
+        run: |
+          git config --global --add safe.directory ${{ github.workspace }}/openwrt
+          update="false"
+          cd mtk-openwrt-feeds
+          if ! git checkout ${{ env.OPENWRT_REF }}; then
+            echo "Reference not found in current repository"
+            git fetch
+            git checkout ${{ env.OPENWRT_REF }}
+            update="true"
+          fi
+
+          if git show-ref --verify refs/heads/${{ env.OPENWRT_REF }} 2>/dev/null; then
+            echo "Updating MTK branch"
+            if [ "$update" != "true" ]; then
+              before_update=$(git rev-parse HEAD)
+              git pull
+              after_update=$(git rev-parse HEAD)
+              if [ "${before_update}" != "${after_update}" ]; then
+                update="true"
+              fi
+            fi
+          fi
+
+          echo "update=$update" >> $GITHUB_OUTPUT
+
+      - name: Save OpenWRT to avoid next long checkout
+        uses: actions/cache/save@v4
+        if: (steps.restore_owrt_cache.outputs.cache-hit != 'true') || (steps.ref_openwrt.outputs.update == 'true')
+        with:
+          key: ${{ env.OPENWRT_CACHE_KEY }}
+          path: openwrt
 
       - name: Restore mediatek feed to avoid long checkout
         id: restore_mtk_cache
