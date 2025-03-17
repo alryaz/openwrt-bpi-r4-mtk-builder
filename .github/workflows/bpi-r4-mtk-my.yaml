@@ -166,8 +166,9 @@ jobs:
           {
             echo "src-git modemfeed https://github.com/koshev-msk/modemfeed.git"
             echo "src-git luci_app_3ginfo_lite https://github.com/4IceG/luci-app-3ginfo-lite.git"
-            echo "src-git luci_app_atinout_mod https://github.com/4IceG/luci-app-atinout-mod.git"
             echo "src-git luci_app_modemband https://github.com/4IceG/luci-app-modemband.git"
+            echo "src-git luci_app_modemdefine https://github.com/4IceG/luci-app-modemdefine.git"
+            echo "src-git luci_app_sms_tool_js https://github.com/4IceG/luci-app-sms-tool-js.git"
           } | tee -a openwrt/feeds.conf.default
 
       - name: Change autobuild rules - important
@@ -225,14 +226,6 @@ jobs:
             if [ ! -z "${LOCAL_CONFIG_PART}" ]; then
               echo "## Configuration (local): ${LOCAL_CONFIG_PART}"
               cat "configs/${LOCAL_CONFIG_PART}"
-              echo ""
-            fi
-
-            # Enable openssl
-            if [[ $UPSTREAM_CONFIG_PARTS == *"common/openssl"* ]]; then
-              echo "## Enable openssl handling"
-              echo "CONFIG_PACKAGE_wpad-mbedtls=n"
-              echo "CONFIG_PACKAGE_wpad-basic-mbedtls=n"
               echo ""
             fi
           } > >(tee openwrt/.config)
