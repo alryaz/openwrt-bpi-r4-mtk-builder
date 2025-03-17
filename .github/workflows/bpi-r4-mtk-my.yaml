@@ -10,7 +10,7 @@ name: Build image for BPi-R4 with MTK feed - alt - my config
 on:
   workflow_dispatch:
     inputs:
-      DEVICE_CONFIG:
+      variant:
         description: "Device configuration selection: <none> or poe (default: non-poe)"
         required: true
         type: choice
@@ -37,12 +37,12 @@ env:
   MEDIATEK_REF: master
   # MEDIATEK_REF: 47fd8068e3bcd23bb606c711ed50149b266f09af
   # Configuration
-  RELEASE_PREFIX: bpi-r4-mtk${{ inputs.DEVICE_CONFIG == 'poe' && '-poe' || '' }}
+  RELEASE_PREFIX: bpi-r4-mtk${{ inputs.variant == 'poe' && '-poe' || '' }}
   UPSTREAM_CONFIG_BASE_URL: https://raw.githubusercontent.com/danpawlik/openwrt-builder/master/configs/
   UPSTREAM_CONFIG_PARTS: |
-    ${{ inputs.DEVICE_CONFIG == 'poe' && 'mediatek/mt7988a/bpi-r4-poe' || 'mediatek/mt7988a/bpi-r4' }}
+    ${{ inputs.variant == 'poe' && 'mediatek/mt7988a/bpi-r4-poe' || 'mediatek/mt7988a/bpi-r4' }}
     common/main-router
-    common/snapshot-short
+    common/snapshot
     common/snapshot-mtk-feed
     common/openssl
   LOCAL_CONFIG_PART: config.append
@@ -199,10 +199,15 @@ jobs:
           cd openwrt;
           bash ../mtk-openwrt-feeds/autobuild/unified/autobuild.sh filogic-mac80211-mt7988_rfb-mt7996 prepare log_file=make
 
-      - name: Add patch for wifi power
+#      - name: Add patch for wifi power
+#        run: |
+#          cd openwrt;
+#          curl -SL https://github.com/openwrt/mt76/pull/954/commits/8088940ffd047a6d282a95af829562e8038f5b2d.patch | tee package/kernel/mt76/patches/0077-Yukariin-fix-wifi-power.patch
+
+      - name: Add patch for wifi power - alternative
         run: |
           cd openwrt;
-          curl -SL https://github.com/openwrt/mt76/pull/954/commits/8088940ffd047a6d282a95af829562e8038f5b2d.patch | tee package/kernel/mt76/patches/0077-Yukariin-fix-wifi-power.patch
+          curl -SL https://github.com/pmarques/openwrt/commit/47008eabacd48602d94ea0f3ba01fe2c79d70f81.patch | tee package/kernel/mt76/patches/0077-Yukariin-fix-wifi-power.patch
 
       - name: Do not create sample wireless networks
         run: |
@@ -334,9 +339,9 @@ jobs:
         with:
           files: bin/targets/mediatek/filogic/*
           tag_name: ${{ env.RELEASE_PREFIX }}-${{ github.ref_name }}-${{ steps.current_date.outputs.date }}
-          name: OpenWRT BPI-R4 with MTK Feed with my packages ${{ inputs.DEVICE_CONFIG == 'poe' && 'POE' || '' }} - ${{ steps.current_date.outputs.date }}
+          name: OpenWRT BPI-R4 with MTK Feed with my packages ${{ inputs.variant == 'poe' && 'POE' || '' }} - ${{ steps.current_date.outputs.date }}
           body: |
-            Updated prebuilt images for BPI-R4 ${{ inputs.DEVICE_CONFIG == 'poe' && 'PoE version' || '' }}  with MTK feed and my custom packages
+            Updated prebuilt images for BPI-R4 ${{ inputs.variant == 'poe' && 'PoE' || 'Regular' }} with MTK feed and my custom packages
 
             OpenWrt ref: ${{ env.OPENWRT_REF }}
             Mediatek feed ref: ${{ env.MEDIATEK_REF }}
